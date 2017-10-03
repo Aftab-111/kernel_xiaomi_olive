@@ -30,7 +30,16 @@ int quiet;		/* Level of quietness */
 int reservenum;		/* Number of memory reservation slots */
 int minsize;		/* Minimum blob size */
 int padsize;		/* Additional padding to blob */
-int phandle_format = PHANDLE_BOTH;	/* Use linux,phandle or phandle properties */
+int alignsize;		/* Additional padding to blob accroding to the alignsize */
+int phandle_format = PHANDLE_EPAPR;	/* Use linux,phandle or phandle properties */
+int generate_symbols;	/* enable symbols & fixup support */
+int generate_fixups;		/* suppress generation of fixups on symbol support */
+int auto_label_aliases;		/* auto generate labels -> aliases */
+
+static int is_power_of_2(int x)
+{
+	return (x > 0) && ((x & (x - 1)) == 0);
+}
 
 static void fill_fullpaths(struct node *tree, const char *prefix)
 {
@@ -50,8 +59,6 @@ static void fill_fullpaths(struct node *tree, const char *prefix)
 }
 
 /* Usage related data. */
-#define FDT_VERSION(version)	_FDT_VERSION(version)
-#define _FDT_VERSION(version)	#version
 static const char usage_synopsis[] = "dtc [options] <input file>";
 static const char usage_short_opts[] = "qI:O:o:V:d:R:S:p:fb:i:H:sW:E:hv";
 static struct option const usage_long_opts[] = {
@@ -86,7 +93,7 @@ static const char * const usage_opts_help[] = {
 	 "\t\tdts - device tree source text\n"
 	 "\t\tdtb - device tree blob\n"
 	 "\t\tasm - assembler source",
-	"\n\tBlob version to produce, defaults to "FDT_VERSION(DEFAULT_FDT_VERSION)" (for dtb and asm output)",
+	"\n\tBlob version to produce, defaults to "stringify(DEFAULT_FDT_VERSION)" (for dtb and asm output)",
 	"\n\tOutput dependency file",
 	"\n\tMake space for <number> reserve map entries (for dtb and asm output)",
 	"\n\tMake the blob at least <bytes> long (extra space)",
@@ -286,10 +293,27 @@ int main(int argc, char *argv[])
 	}
 
 	if (cmdline_boot_cpuid != -1)
-		bi->boot_cpuid_phys = cmdline_boot_cpuid;
+		dti->boot_cpuid_phys = cmdline_boot_cpuid;
 
-	fill_fullpaths(bi->dt, "");
-	process_checks(force, bi);
+	fill_fullpaths(dti->dt, "");
+
+	/* on a plugin, generate by default */
+	if (dti->dtsflags & DTSF_PLUGIN) {
+		generate_fixups = 1;
+	}
+
+	process_checks(force, dti);
+
+	if (auto_label_aliases)
+		generate_label_tree(dti, "aliases", false);
+
+	if (generate_symbols)
+		generate_label_tree(dti, "__symbols__", true);
+
+	if (generate_fixups) {
+		generate_fixups_tree(dti, "__fixups__");
+		generate_local_fixups_tree(dti, "__local_fixups__");
+	}
 
 	if (sort)
 		sort_tree(bi);
