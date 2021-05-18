@@ -2,6 +2,7 @@
 # Top-level Makefile calls into asm-$(ARCH)
 # List only non-arch directories below
 
+<<<<<<< HEAD
 
 header-y += asm-generic/
 header-y += linux/
@@ -15,3 +16,7 @@ header-y += scsi/
 header-y += misc/
 header-y += media/
 header-y += miniISP/
+=======
+header-y += linux/
+header-y += sound/
+>>>>>>> 17c758d2beac7c62eaabccb98540a510c586e070
